@@ -91,15 +91,20 @@ class MainWidget(Widget):
         return int(x), int(y)
     
     def transformPerspective(self, x, y):
+        # sets 3d y coordinate
         transformedY = y * self.perspecitvePointY / self.height
+        # limits y to the perspective point
         if transformedY > self.perspecitvePointY:
             transformedY = self.perspecitvePointY
 
+        # calculates distance to the perspective point
         diffX = x - self.perspecitvePointX
         diffY = self.perspecitvePointY - transformedY
 
+        # gets proportional distance
         proportionY = diffY/self.perspecitvePointY
 
+        # calculates x based on proportional distance of y
         transformedX = self.perspecitvePointX + diffX * proportionY
 
         return int(transformedX), int(transformedY)
