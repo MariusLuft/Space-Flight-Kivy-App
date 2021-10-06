@@ -10,7 +10,8 @@ from kivy.properties import Clock
 #from kivy.core.window.Window import Window
 from kivy.core.window import Window
 from kivy import platform
-from kivy.graphics.vertex_instructions import Quad 
+from kivy.graphics.vertex_instructions import Quad, Triangle
+import random
 
 
 class MainWidget(Widget):
@@ -20,16 +21,16 @@ class MainWidget(Widget):
     perspecitvePointY = NumericProperty(0)
 
     verticalLines = []
-    numVerticalLines = 4
-    spacingVerticalLines = 0.1
+    numVerticalLines = 10
+    spacingVerticalLines = 0.25
 
     
     horizontalLines = []
-    numhorizontalLines = 15
+    numhorizontalLines = 25
     spacinghorizontalLines = 0.1
 
     currentOffsetY = 0
-    speed = 1
+    speed = 3
 
     speedx = 12
     currentSpeedX = 0
@@ -38,8 +39,13 @@ class MainWidget(Widget):
     currentLoopIndex = 0
 
     tiles = []
-    numberOfTiles = 3
+    numberOfTiles = 15
     tilesCoordinates = []
+
+    ship = None
+    SHIP_WIDTH = 0.1
+    SHIP_HEIGHT =  0.035
+    SHIP_BASE_Y = 0.04
 
 
     def __init__(self, **args):
@@ -47,7 +53,9 @@ class MainWidget(Widget):
         #print("init width: " + str(self.width) + " init height: " + str(self.height))
         self.initVerticalLines()
         self.initHorizontalLines()
-        self.initTiles()
+        self.initTiles()     
+        self.initShip()
+        self.prefillTiles()
         self.generateTileCoordinates()
         if self.is_desktop:
             self._keyboard = Window.request_keyboard(self.keyboard_closed, self)
@@ -71,28 +79,74 @@ class MainWidget(Widget):
             Color(1,1,1) 
             for i in range(0, self.numberOfTiles):
                 self.tiles.append(Quad())
+
+    def initShip(self): 
+        with self.canvas:
+            Color(0,1,1) 
+            self.ship = Triangle()
+
+    def updateShip(self):
+        centerX = self.width/2
+        shipBaseY = self.SHIP_BASE_Y * self.height
+        shipHalfWidth = self.SHIP_WIDTH * self.width / 2
+        shipheightAbsolute = self.SHIP_HEIGHT * self.height
+        #  2
+        # 1 3
+        x1, y1 = self.transform(centerX - shipHalfWidth, shipBaseY)
+        x2, y2 = self.transform(centerX, shipBaseY + shipheightAbsolute)
+        x3, y3 = self.transform(centerX + shipHalfWidth, shipBaseY)
+        self.ship.points = [x1, y1, x2, y2, x3, y3]
                 
 
     def generateTileCoordinates(self):
         lastY = 0
+        lastX = 0
         # clean coordiantes that leave the screen
         for i in range(len(self.tilesCoordinates)- 1, -1, -1):
             if self.tilesCoordinates[i][1] < self.currentLoopIndex:
                 del self.tilesCoordinates[i]
-                print("tile deleted")
 
         if len(self.tilesCoordinates) > 0:
             # stores last tile information
             lastcoordiantes = self.tilesCoordinates[-1]
             # increments y of last tile to make it be further away
             lastY = lastcoordiantes[1] + 1
+            lastX = lastcoordiantes[0]
 
         # only append new coordinates if there is space
         for i in range(len(self.tilesCoordinates), self.numberOfTiles):
-            self.tilesCoordinates.append((0, lastY))
-            print("tile added")
+            # 0 = straight
+            # 1 = right
+            # 2 = left
+            r = random.randint(0,2)
+
+            startIndex = -int(self.numVerticalLines/2) + 1
+            endIndex = startIndex + self.numVerticalLines - 1
+
+            if lastX <= startIndex:
+                r = 1
+            if lastX >= endIndex-1: 
+                r = 2
+           
+            self.tilesCoordinates.append((lastX, lastY))
+
+            if r == 1:
+                lastX += 1
+                self.tilesCoordinates.append((lastX, lastY))
+                lastY += 1
+                self.tilesCoordinates.append((lastX, lastY))
+            if r == 2:
+                lastX -= 1
+                self.tilesCoordinates.append((lastX, lastY))
+                lastY += 1
+                self.tilesCoordinates.append((lastX, lastY))
+
             lastY += 1
         
+    def prefillTiles(self):
+        numberOfPrefilledTiles = 13
+        for i in range(1, numberOfPrefilledTiles):
+            self.tilesCoordinates.append((0, i))
 
 
     def on_size(self, *args):
@@ -174,6 +228,7 @@ class MainWidget(Widget):
         self.updateVerticalLines()
         self.updateHorizontalLines()
         self.updateTiles()
+        self.updateShip()
         self.currentOffsetY += self.speed * timeFactor
         spacingY = self.spacinghorizontalLines * self.height
         # one vertical level has passed
@@ -181,8 +236,7 @@ class MainWidget(Widget):
             self.currentOffsetY -= spacingY
             self.currentLoopIndex += 1
             self.generateTileCoordinates()
-            print("********************")
-        # self.currentOffsetX += self.currentSpeedX * timeFactor
+        self.currentOffsetX += self.currentSpeedX * timeFactor
 
     
             
